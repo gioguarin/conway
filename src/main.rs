@@ -182,9 +182,9 @@ impl From<&ZoomLevel> for f64 {
   fn from(value: &ZoomLevel) -> Self {
     match value {
       ZoomLevel::Z1 => 1.,
-      ZoomLevel::Z2 => 2.25,
-      ZoomLevel::Z3 => 4.5,
-      ZoomLevel::Z4 => 9.,
+      ZoomLevel::Z2 => 2.,
+      ZoomLevel::Z3 => 4.,
+      ZoomLevel::Z4 => 8.,
     }
   }
 }
