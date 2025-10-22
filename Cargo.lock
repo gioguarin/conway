@@ -62,6 +62,7 @@ dependencies = [
  "anyhow",
  "dashmap",
  "ratatui",
+ "rayon",
 ]
 
 [[package]]

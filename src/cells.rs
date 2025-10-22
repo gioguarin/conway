@@ -15,6 +15,20 @@ impl Cells {
     (min.1..=max.1)
       .flat_map(move |y| (min.0..=max.0).filter_map(move |x| self.get(&(x, y)).map(|r| *r.key())))
   }
+
+  pub fn count_neighbors(&self, x: i64, y: i64) -> usize {
+    (-1..=1)
+      .flat_map(|dx| {
+        (-1..=1).filter_map(move |dy| {
+          if !(dx == 0 && dy == 0) && self.contains(&(x + dx, y + dy)) {
+            Some(())
+          } else {
+            None
+          }
+        })
+      })
+      .count()
+  }
 }
 
 impl Deref for Cells {

@@ -1,9 +1,16 @@
+use crate::{
+  cells::Cells,
+  view::{Direction, View},
+};
 use anyhow::Result;
+use dashmap::DashSet;
 use ratatui::{
   Terminal,
   crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, poll, read},
   prelude::CrosstermBackend,
 };
+use rayon::iter::IntoParallelRefIterator;
+use rayon::prelude::*;
 use std::{
   io::Stdout,
   ops::ControlFlow,
@@ -11,25 +18,19 @@ use std::{
   time::{Duration, Instant},
 };
 
-use crate::cells::Cells;
-
 mod cells;
-mod widgets;
+mod render;
+mod view;
 
 fn main() {
   let mut term = ratatui::init();
   let mut state = State::new();
 
-  for x in -1..=1 {
-    for y in -1..=1 {
-      if (x, y) != (0, 0) {
-        state.cells.insert((x, y));
-      }
-    }
-  }
-
-  state.cells.insert((5, 5));
-  state.cells.insert((7, 7));
+  state.cells.insert((0, 0));
+  state.cells.insert((1, -1));
+  state.cells.insert((2, -1));
+  state.cells.insert((2, 0));
+  state.cells.insert((2, 1));
 
   let result = state.run(&mut term);
   ratatui::restore();
@@ -75,12 +76,12 @@ impl State {
       if !self.paused {
         accumulator += delta;
         while accumulator >= tick_rate {
-          self.update()?;
+          self.update();
           accumulator -= tick_rate;
         }
       }
 
-      term.draw(|frame| frame.render_widget(&*self, frame.area()))?;
+      term.draw(|frame| frame.render_widget(&mut *self, frame.area()))?;
 
       let elapsed = last_frame.elapsed();
       if elapsed < frame_rate {
@@ -107,109 +108,51 @@ impl State {
           (KeyCode::Right, KeyModifiers::SHIFT) => self.view.translate.right(),
           (KeyCode::Up, KeyModifiers::SHIFT) => self.view.translate.up(),
           (KeyCode::Down, KeyModifiers::SHIFT) => self.view.translate.down(),
-          (KeyCode::Char('+'), _) => self.view.zoom.inward(),
-          (KeyCode::Char('-'), _) => self.view.zoom.outward(),
+          (KeyCode::Char('h'), _) => self.view.controls_hidden = !self.view.controls_hidden,
+          (KeyCode::Char('p'), _) => self.paused = !self.paused,
+          (KeyCode::Char('c'), _) => self.view.cursor.toggle(),
+          (KeyCode::Char(' '), _) if !self.view.cursor.hidden => self.place_pattern(),
+          (KeyCode::Left, _) => self.view.move_cursor(Direction::Left),
+          (KeyCode::Right, _) => self.view.move_cursor(Direction::Right),
+          (KeyCode::Up, _) => self.view.move_cursor(Direction::Up),
+          (KeyCode::Down, _) => self.view.move_cursor(Direction::Down),
           _ => {}
         }
       }
     }))
   }
 
-  fn update(&mut self) -> Result<()> {
-    Ok(())
-  }
-}
-
-#[derive(Default)]
-struct View {
-  cursor: Cursor,
-  zoom: ZoomLevel,
-  translate: Translate,
-}
-
-#[derive(PartialEq, Default)]
-struct Cursor {
-  offset_row: f64,
-  offset_col: f64,
-}
-
-impl Cursor {
-  fn new() -> Self {
-    Self {
-      offset_row: 0.,
-      offset_col: 0.,
-    }
-  }
-
-  fn at(&self, offset_row: f64, offset_col: f64) -> bool {
-    Cursor {
-      offset_row,
-      offset_col,
-    } == *self
-  }
-}
-
-#[derive(Default)]
-enum ZoomLevel {
-  #[default]
-  Z1,
-  Z2,
-  Z3,
-  Z4,
-}
-
-impl ZoomLevel {
-  fn outward(&mut self) {
-    *self = match self {
-      Self::Z1 => Self::Z2,
-      Self::Z2 => Self::Z3,
-      Self::Z3 => Self::Z4,
-      Self::Z4 => Self::Z4,
-    }
+  fn update(&mut self) {
+    *self.cells = self
+      .cells
+      .par_iter()
+      .flat_map_iter(|cell| {
+        let c = cell.clone();
+        (-1..=1).flat_map(move |x| (-1..=1).map(move |y| (c.0 + x, c.1 + y)))
+      })
+      .collect::<DashSet<(i64, i64)>>()
+      .par_iter()
+      .filter_map(|c| {
+        let live_neighbors = self.cells.count_neighbors(c.0, c.1);
+        if self.cells.contains(&*c) {
+          if let 2 | 3 = live_neighbors {
+            Some(*c)
+          } else {
+            None
+          }
+        } else {
+          if live_neighbors == 3 { Some(*c) } else { None }
+        }
+      })
+      .collect();
   }
 
-  fn inward(&mut self) {
-    *self = match self {
-      Self::Z1 => Self::Z1,
-      Self::Z2 => Self::Z1,
-      Self::Z3 => Self::Z2,
-      Self::Z4 => Self::Z3,
-    }
-  }
-}
-
-impl From<&ZoomLevel> for f64 {
-  fn from(value: &ZoomLevel) -> Self {
-    match value {
-      ZoomLevel::Z1 => 1.,
-      ZoomLevel::Z2 => 2.,
-      ZoomLevel::Z3 => 4.,
-      ZoomLevel::Z4 => 8.,
-    }
-  }
-}
-
-#[derive(Default)]
-struct Translate {
-  row: f64,
-  col: f64,
-}
-
-impl Translate {
-  fn left(&mut self) {
-    self.col += 1.
-  }
-
-  fn right(&mut self) {
-    self.col -= 1.
-  }
-
-  fn up(&mut self) {
-    self.row -= 1.
-  }
-
-  fn down(&mut self) {
-    self.row += 1.
+  fn place_pattern(&mut self) {
+    let (row, col) = (
+      self.view.cursor.offset_row + self.view.translate.row,
+      self.view.cursor.offset_col + self.view.translate.col,
+    );
+    self.cells.insert((col.round() as i64, row.round() as i64));
   }
 }
 
