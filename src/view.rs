@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 pub enum Direction {
   Left,
   Right,
@@ -7,14 +9,18 @@ pub enum Direction {
 
 #[derive(Default)]
 pub struct View {
-  pub controls_hidden: bool,
+  pub controls: Controls,
   pub bounds: (f64, f64),
   pub cursor: Cursor,
   pub translate: Translate,
+  pub zoom: Zoom,
 }
 
 impl View {
   pub fn move_cursor(&mut self, dir: Direction) {
+    if !*self.zoom {
+      return;
+    }
     let (c_col, c_row) = (&mut self.cursor.offset_col, &mut self.cursor.offset_row);
     let (col_range, row_range) = (self.bounds.0, self.bounds.1);
     match dir {
@@ -47,6 +53,28 @@ impl View {
         }
       }
     }
+  }
+}
+
+pub struct Controls(bool);
+
+impl Controls {
+  pub fn toggle(&mut self) {
+    self.0 = !self.0
+  }
+}
+
+impl Deref for Controls {
+  type Target = bool;
+
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl Default for Controls {
+  fn default() -> Self {
+    Self(true)
   }
 }
 
@@ -88,5 +116,27 @@ impl Translate {
 
   pub fn down(&mut self) {
     self.row -= 1.
+  }
+}
+
+pub struct Zoom(bool);
+
+impl Zoom {
+  pub fn toggle(&mut self) {
+    self.0 = !self.0
+  }
+}
+
+impl Default for Zoom {
+  fn default() -> Self {
+    Self(true)
+  }
+}
+
+impl Deref for Zoom {
+  type Target = bool;
+
+  fn deref(&self) -> &Self::Target {
+    &self.0
   }
 }

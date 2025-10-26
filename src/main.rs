@@ -19,6 +19,7 @@ use std::{
 };
 
 mod cells;
+mod patterns;
 mod render;
 mod view;
 
@@ -108,14 +109,20 @@ impl State {
           (KeyCode::Right, KeyModifiers::SHIFT) => self.view.translate.right(),
           (KeyCode::Up, KeyModifiers::SHIFT) => self.view.translate.up(),
           (KeyCode::Down, KeyModifiers::SHIFT) => self.view.translate.down(),
-          (KeyCode::Char('h'), _) => self.view.controls_hidden = !self.view.controls_hidden,
-          (KeyCode::Char('p'), _) => self.paused = !self.paused,
-          (KeyCode::Char('c'), _) => self.view.cursor.toggle(),
-          (KeyCode::Char(' '), _) if !self.view.cursor.hidden => self.place_pattern(),
           (KeyCode::Left, _) => self.view.move_cursor(Direction::Left),
           (KeyCode::Right, _) => self.view.move_cursor(Direction::Right),
           (KeyCode::Up, _) => self.view.move_cursor(Direction::Up),
           (KeyCode::Down, _) => self.view.move_cursor(Direction::Down),
+          (KeyCode::Char('h'), _) => self.view.controls.toggle(),
+          (KeyCode::Char('p'), _) => self.paused = !self.paused,
+          (KeyCode::Char('c'), _) => self.view.cursor.toggle(),
+          (KeyCode::Char(' '), _) if !self.view.cursor.hidden => self.place_pattern(),
+          (KeyCode::Char('z'), _) => {
+            self.view.zoom.toggle();
+            if !*self.view.zoom {
+              self.view.cursor.hidden = true
+            };
+          }
           _ => {}
         }
       }

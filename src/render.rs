@@ -11,8 +11,7 @@ use ratatui::{
 
 use crate::State;
 
-const CONTROLS: &str =
-  " - Pan: SHIFT+ARROWS | Move Cursor: ARROWS | Toggle Cursor: C | Pause: P | Status/Help: H - ";
+const CONTROLS: &str = " - pan: shift+arrows | move: arrows | zoom: z | place: space | pause: p | cursor: c | help: h - ";
 
 impl Widget for &mut State {
   fn render(self, area: Rect, buf: &mut Buffer) {
@@ -23,13 +22,19 @@ impl Widget for &mut State {
       .title_alignment(Alignment::Center)
       .bg(Color::DarkGray);
 
-    self.view.bounds = if !self.view.controls_hidden {
+    let (w, h) = if *self.view.controls {
       (
-        block.inner(area).width as f64 / 2.,
+        block.inner(area).width as f64,
         block.inner(area).height as f64,
       )
     } else {
-      (area.width as f64 / 2., area.height as f64)
+      (area.width as f64, area.height as f64)
+    };
+
+    self.view.bounds = if *self.view.zoom {
+      (w / 2., h)
+    } else {
+      (w, h * 2.)
     };
 
     let t_col = self.view.translate.col;
@@ -38,7 +43,11 @@ impl Widget for &mut State {
     c.offset_col = c.offset_col.clamp(-x_range, x_range);
     c.offset_row = c.offset_row.clamp(-y_range, y_range);
     let canvas = Canvas::default()
-      .marker(Marker::HalfBlock)
+      .marker(if *self.view.zoom {
+        Marker::HalfBlock
+      } else {
+        Marker::Braille
+      })
       .x_bounds([t_col - x_range, t_col + x_range])
       .y_bounds([t_row - y_range, t_row + y_range])
       .paint(|ctx| {
@@ -66,7 +75,7 @@ impl Widget for &mut State {
           })
         }
       });
-    if !self.view.controls_hidden {
+    if *self.view.controls {
       canvas.block(block).render(area, buf)
     } else {
       canvas.render(area, buf)
