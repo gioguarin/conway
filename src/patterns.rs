@@ -1,5 +1,7 @@
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub enum Pattern {
+  #[default]
+  Single,
   Block,
   Beehive,
   Loaf,
@@ -25,6 +27,7 @@ pub enum Pattern {
 impl Pattern {
   pub fn coords(self) -> Vec<(i64, i64)> {
     match self {
+      Self::Single => vec![(0, 0)],
       Self::Block => vec![(0, 0), (1, 0), (0, 1), (1, 1)],
       Self::Beehive => vec![(1, 0), (2, 0), (0, 1), (3, 1), (1, 2), (2, 2)],
       Self::Loaf => vec![(1, 0), (2, 0), (0, 1), (3, 1), (1, 2), (3, 2), (2, 3)],
@@ -186,33 +189,62 @@ impl Pattern {
       Self::Eater => vec![(0, 0), (1, 0), (0, 1), (2, 2), (3, 2), (2, 3), (3, 3)],
     }
   }
-  pub fn all() -> Vec<Pattern> {
-    vec![
-      Self::Block,
-      Self::Beehive,
-      Self::Loaf,
-      Self::Boat,
-      Self::Tub,
-      Self::Blinker,
-      Self::Toad,
-      Self::Beacon,
-      Self::Pulsar,
-      Self::Pentadecathlon,
-      Self::Glider,
-      Self::LightweightSpaceship,
-      Self::MiddleweightSpaceship,
-      Self::HeavyweightSpaceship,
-      Self::RPentomino,
-      Self::Diehard,
-      Self::Acorn,
-      Self::GosperGliderGun,
-      Self::LongBoat,
-      Self::Eater,
-    ]
+
+  pub fn next(&mut self) {
+    *self = match *self {
+      Self::Single => Self::Block,
+      Self::Block => Self::Beehive,
+      Self::Beehive => Self::Loaf,
+      Self::Loaf => Self::Boat,
+      Self::Boat => Self::Tub,
+      Self::Tub => Self::Blinker,
+      Self::Blinker => Self::Toad,
+      Self::Toad => Self::Beacon,
+      Self::Beacon => Self::Pulsar,
+      Self::Pulsar => Self::Pentadecathlon,
+      Self::Pentadecathlon => Self::Glider,
+      Self::Glider => Self::LightweightSpaceship,
+      Self::LightweightSpaceship => Self::MiddleweightSpaceship,
+      Self::MiddleweightSpaceship => Self::HeavyweightSpaceship,
+      Self::HeavyweightSpaceship => Self::RPentomino,
+      Self::RPentomino => Self::Diehard,
+      Self::Diehard => Self::Acorn,
+      Self::Acorn => Self::GosperGliderGun,
+      Self::GosperGliderGun => Self::LongBoat,
+      Self::LongBoat => Self::Eater,
+      Self::Eater => Self::Single,
+    }
+  }
+
+  pub fn prev(&mut self) {
+    *self = match *self {
+      Self::Single => Self::Eater,
+      Self::Block => Self::Single,
+      Self::Beehive => Self::Block,
+      Self::Loaf => Self::Beehive,
+      Self::Boat => Self::Loaf,
+      Self::Tub => Self::Boat,
+      Self::Blinker => Self::Tub,
+      Self::Toad => Self::Blinker,
+      Self::Beacon => Self::Toad,
+      Self::Pulsar => Self::Beacon,
+      Self::Pentadecathlon => Self::Pulsar,
+      Self::Glider => Self::Pentadecathlon,
+      Self::LightweightSpaceship => Self::Glider,
+      Self::MiddleweightSpaceship => Self::LightweightSpaceship,
+      Self::HeavyweightSpaceship => Self::MiddleweightSpaceship,
+      Self::RPentomino => Self::HeavyweightSpaceship,
+      Self::Diehard => Self::RPentomino,
+      Self::Acorn => Self::Diehard,
+      Self::GosperGliderGun => Self::Acorn,
+      Self::LongBoat => Self::GosperGliderGun,
+      Self::Eater => Self::LongBoat,
+    }
   }
 
   pub fn name(self) -> &'static str {
     match self {
+      Self::Single => "Single Cell Placement",
       Self::Block => "Block (Still Life)",
       Self::Beehive => "Beehive (Still Life)",
       Self::Loaf => "Loaf (Still Life)",
@@ -233,31 +265,6 @@ impl Pattern {
       Self::GosperGliderGun => "Gosper Glider Gun (Period 30)",
       Self::LongBoat => "Long Boat (Still Life)",
       Self::Eater => "Eater (Still Life)",
-    }
-  }
-
-  pub fn description(self) -> &'static str {
-    match self {
-      Self::Block => "The simplest still life - 2×2 square",
-      Self::Beehive => "Common 6-cell still life",
-      Self::Loaf => "7-cell still life",
-      Self::Boat => "5-cell still life",
-      Self::Tub => "4-cell still life",
-      Self::Blinker => "Simplest oscillator, alternates between horizontal and vertical",
-      Self::Toad => "6-cell period-2 oscillator",
-      Self::Beacon => "Period-2 oscillator formed by two blocks",
-      Self::Pulsar => "Large period-3 oscillator with 48 cells",
-      Self::Pentadecathlon => "Period-15 oscillator",
-      Self::Glider => "Smallest spaceship, moves diagonally",
-      Self::LightweightSpaceship => "Orthogonal spaceship, speed c/2",
-      Self::MiddleweightSpaceship => "Larger orthogonal spaceship",
-      Self::HeavyweightSpaceship => "Largest standard spaceship",
-      Self::RPentomino => "Famous methuselah, stabilizes at generation 1103",
-      Self::Diehard => "Lives for exactly 130 generations before vanishing",
-      Self::Acorn => "Small pattern that takes 5206 generations to stabilize",
-      Self::GosperGliderGun => "First discovered infinite growth pattern, produces gliders",
-      Self::LongBoat => "Extended still life",
-      Self::Eater => "Still life that can consume gliders",
     }
   }
 }

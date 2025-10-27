@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use crate::patterns::Pattern;
 
 pub enum Direction {
   Left,
@@ -7,18 +7,17 @@ pub enum Direction {
   Down,
 }
 
-#[derive(Default)]
 pub struct View {
-  pub controls: Controls,
+  pub controls: bool,
   pub bounds: (f64, f64),
   pub cursor: Cursor,
   pub translate: Translate,
-  pub zoom: Zoom,
+  pub zoom: bool,
 }
 
 impl View {
   pub fn move_cursor(&mut self, dir: Direction) {
-    if !*self.zoom {
+    if !self.zoom {
       return;
     }
     let (c_col, c_row) = (&mut self.cursor.offset_col, &mut self.cursor.offset_row);
@@ -56,42 +55,15 @@ impl View {
   }
 }
 
-pub struct Controls(bool);
-
-impl Controls {
-  pub fn toggle(&mut self) {
-    self.0 = !self.0
-  }
-}
-
-impl Deref for Controls {
-  type Target = bool;
-
-  fn deref(&self) -> &Self::Target {
-    &self.0
-  }
-}
-
-impl Default for Controls {
+impl Default for View {
   fn default() -> Self {
-    Self(true)
-  }
-}
-
-#[derive(PartialEq, Default)]
-pub struct Cursor {
-  pub hidden: bool,
-  pub offset_row: f64,
-  pub offset_col: f64,
-}
-
-impl Cursor {
-  pub fn at(&self, offset_row: f64, offset_col: f64) -> bool {
-    (self.offset_row, self.offset_col) == (offset_row, offset_col)
-  }
-
-  pub fn toggle(&mut self) {
-    self.hidden = !self.hidden
+    Self {
+      controls: true,
+      bounds: Default::default(),
+      cursor: Default::default(),
+      translate: Default::default(),
+      zoom: true,
+    }
   }
 }
 
@@ -119,24 +91,20 @@ impl Translate {
   }
 }
 
-pub struct Zoom(bool);
+#[derive(Default)]
+pub struct Cursor {
+  pub hidden: bool,
+  pub offset_row: f64,
+  pub offset_col: f64,
+  pub pattern: Pattern,
+}
 
-impl Zoom {
+impl Cursor {
+  pub fn at(&self, offset_row: f64, offset_col: f64) -> bool {
+    (self.offset_row, self.offset_col) == (offset_row, offset_col)
+  }
+
   pub fn toggle(&mut self) {
-    self.0 = !self.0
-  }
-}
-
-impl Default for Zoom {
-  fn default() -> Self {
-    Self(true)
-  }
-}
-
-impl Deref for Zoom {
-  type Target = bool;
-
-  fn deref(&self) -> &Self::Target {
-    &self.0
+    self.hidden = !self.hidden
   }
 }

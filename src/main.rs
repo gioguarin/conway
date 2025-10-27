@@ -2,8 +2,8 @@ use crate::{
   cells::Cells,
   view::{Direction, View},
 };
+use ahash::{HashSet, HashSetExt};
 use anyhow::Result;
-use dashmap::DashSet;
 use ratatui::{
   Terminal,
   crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, poll, read},
@@ -26,12 +26,6 @@ mod view;
 fn main() {
   let mut term = ratatui::init();
   let mut state = State::new();
-
-  state.cells.insert((0, 0));
-  state.cells.insert((1, -1));
-  state.cells.insert((2, -1));
-  state.cells.insert((2, 0));
-  state.cells.insert((2, 1));
 
   let result = state.run(&mut term);
   ratatui::restore();
@@ -113,15 +107,14 @@ impl State {
           (KeyCode::Right, _) => self.view.move_cursor(Direction::Right),
           (KeyCode::Up, _) => self.view.move_cursor(Direction::Up),
           (KeyCode::Down, _) => self.view.move_cursor(Direction::Down),
-          (KeyCode::Char('h'), _) => self.view.controls.toggle(),
+          (KeyCode::Char('h'), _) => self.view.controls = !self.view.controls,
           (KeyCode::Char('p'), _) => self.paused = !self.paused,
           (KeyCode::Char('c'), _) => self.view.cursor.toggle(),
-          (KeyCode::Char(' '), _) if !self.view.cursor.hidden => self.place_pattern(),
-          (KeyCode::Char('z'), _) => {
-            self.view.zoom.toggle();
-            if !*self.view.zoom {
-              self.view.cursor.hidden = true
-            };
+          (KeyCode::Char('z'), _) => self.view.zoom = !self.view.zoom,
+          (KeyCode::Char('['), _) => self.view.cursor.pattern.prev(),
+          (KeyCode::Char(']'), _) => self.view.cursor.pattern.next(),
+          (KeyCode::Char(' '), _) if !self.view.cursor.hidden && self.view.zoom => {
+            self.place_pattern()
           }
           _ => {}
         }
@@ -137,7 +130,7 @@ impl State {
         let c = cell.clone();
         (-1..=1).flat_map(move |x| (-1..=1).map(move |y| (c.0 + x, c.1 + y)))
       })
-      .collect::<DashSet<(i64, i64)>>()
+      .collect::<HashSet<(i64, i64)>>()
       .par_iter()
       .filter_map(|c| {
         let live_neighbors = self.cells.count_neighbors(c.0, c.1);
@@ -155,11 +148,20 @@ impl State {
   }
 
   fn place_pattern(&mut self) {
-    let (row, col) = (
-      self.view.cursor.offset_row + self.view.translate.row,
-      self.view.cursor.offset_col + self.view.translate.col,
+    let (t_col, t_row) = (
+      (self.view.cursor.offset_col + self.view.translate.col).round() as i64,
+      (self.view.cursor.offset_row + self.view.translate.row).round() as i64,
     );
-    self.cells.insert((col.round() as i64, row.round() as i64));
+    let coords = self
+      .view
+      .cursor
+      .pattern
+      .coords()
+      .into_iter()
+      .map(|(col, row)| (col + t_col, row + t_row));
+    for (col, row) in coords {
+      self.cells.insert((col, row));
+    }
   }
 }
 

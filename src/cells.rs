@@ -1,19 +1,18 @@
+use ahash::{HashSet, HashSetExt};
 use std::ops::{Deref, DerefMut};
 
-use dashmap::DashSet;
-
-pub struct Cells(DashSet<(i64, i64)>);
+pub struct Cells(HashSet<(i64, i64)>);
 
 impl Cells {
   pub fn new() -> Self {
-    Self(DashSet::new())
+    Self(HashSet::new())
   }
 }
 
 impl Cells {
   pub fn subset(&self, min: (i64, i64), max: (i64, i64)) -> impl Iterator<Item = (i64, i64)> {
     (min.1..=max.1)
-      .flat_map(move |y| (min.0..=max.0).filter_map(move |x| self.get(&(x, y)).map(|r| *r.key())))
+      .flat_map(move |y| (min.0..=max.0).filter_map(move |x| self.get(&(x, y)).copied()))
   }
 
   pub fn count_neighbors(&self, x: i64, y: i64) -> usize {
@@ -32,7 +31,7 @@ impl Cells {
 }
 
 impl Deref for Cells {
-  type Target = DashSet<(i64, i64)>;
+  type Target = HashSet<(i64, i64)>;
 
   fn deref(&self) -> &Self::Target {
     &self.0

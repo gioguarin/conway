@@ -4,7 +4,7 @@ use ratatui::{
   style::{Color, Stylize},
   symbols::Marker,
   widgets::{
-    Block, Widget,
+    Block, Paragraph, Widget,
     canvas::{Canvas, Points},
   },
 };
@@ -19,10 +19,14 @@ impl Widget for &mut State {
 
     let block = Block::new()
       .title_top(CONTROLS)
+      .title_bottom(format!(
+        "- cycle cursor pattern: [, ] - current: {}",
+        c.pattern.name()
+      ))
       .title_alignment(Alignment::Center)
       .bg(Color::DarkGray);
 
-    let (w, h) = if *self.view.controls {
+    let (w, h) = if self.view.controls {
       (
         block.inner(area).width as f64,
         block.inner(area).height as f64,
@@ -31,7 +35,7 @@ impl Widget for &mut State {
       (area.width as f64, area.height as f64)
     };
 
-    self.view.bounds = if *self.view.zoom {
+    self.view.bounds = if self.view.zoom {
       (w / 2., h)
     } else {
       (w, h * 2.)
@@ -43,7 +47,7 @@ impl Widget for &mut State {
     c.offset_col = c.offset_col.clamp(-x_range, x_range);
     c.offset_row = c.offset_row.clamp(-y_range, y_range);
     let canvas = Canvas::default()
-      .marker(if *self.view.zoom {
+      .marker(if self.view.zoom {
         Marker::HalfBlock
       } else {
         Marker::Braille
@@ -68,14 +72,24 @@ impl Widget for &mut State {
             .collect::<Vec<_>>(),
           color: Color::White,
         });
-        if !c.hidden {
+        if !c.hidden && self.view.zoom {
           ctx.draw(&Points {
-            coords: &[(c.offset_col + t_col, c.offset_row + t_row)],
+            coords: &c
+              .pattern
+              .coords()
+              .into_iter()
+              .map(|(col, row)| {
+                (
+                  c.offset_col + t_col + col as f64,
+                  c.offset_row + t_row + row as f64,
+                )
+              })
+              .collect::<Vec<_>>(),
             color: Color::Cyan,
           })
         }
       });
-    if *self.view.controls {
+    if self.view.controls {
       canvas.block(block).render(area, buf)
     } else {
       canvas.render(area, buf)
